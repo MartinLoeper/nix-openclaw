@@ -5,4 +5,5 @@ builds:
     # Avoids building openclaw-gateway multiple times across parallel CI jobs
     # (cache-miss races) and reduces total compute/quota usage.
     - "checks.aarch64-darwin.ci"
+    - "checks.aarch64-linux.ci"
     - "checks.x86_64-linux.ci"

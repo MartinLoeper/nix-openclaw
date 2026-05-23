@@ -15,6 +15,7 @@
   vips,
   git,
   zstd,
+  yq,
   sourceInfo,
   gatewaySrc ? null,
   pnpmDepsHash ? (sourceInfo.pnpmDepsHash or null),
@@ -40,6 +41,7 @@ let
           node-gyp
           git
           zstd
+          yq
           ;
       }
       {

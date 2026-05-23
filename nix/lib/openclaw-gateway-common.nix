@@ -12,6 +12,7 @@
   node-gyp,
   git,
   zstd,
+  yq,
 }:
 
 # Shared build plumbing for OpenClaw gateway-related derivations.
@@ -62,7 +63,34 @@ let
     fetcherVersion = 3;
     npm_config_arch = pnpmArch;
     npm_config_platform = pnpmPlatform;
-    nativeBuildInputs = [ git ];
+    nativeBuildInputs = [ git python3 yq ];
+    prePnpmInstall = ''
+      python3 - <<'PY'
+import json
+import subprocess
+from pathlib import Path
+
+workspace = Path("pnpm-workspace.yaml")
+lockfile = Path("pnpm-lock.yaml")
+workspace_json = json.loads(subprocess.check_output(["yq", ".", str(workspace)]))
+lockfile_json = json.loads(subprocess.check_output(["yq", ".", str(lockfile)]))
+workspace_patches = workspace_json.get("patchedDependencies", {})
+lockfile_patches = lockfile_json.get("patchedDependencies", {})
+
+merged_patches = {}
+for name, patch_path in workspace_patches.items():
+    lockfile_patch = lockfile_patches.get(name)
+    if isinstance(lockfile_patch, dict):
+        patch_hash = lockfile_patch.get("hash")
+    else:
+        patch_hash = lockfile_patch
+    merged_patches[name] = {"hash": patch_hash, "path": patch_path}
+
+if merged_patches:
+    lockfile_json["patchedDependencies"] = merged_patches
+    lockfile.write_text(subprocess.check_output(["yq", "-y", "."], input=json.dumps(lockfile_json).encode()).decode())
+PY
+    '';
   };
 
   envBase = {
@@ -99,6 +127,7 @@ in
     python3
     node-gyp
     zstd
+    yq
   ]
   ++ extraNativeBuildInputs;
 

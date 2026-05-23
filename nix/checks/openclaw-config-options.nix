@@ -13,6 +13,7 @@
   node-gyp,
   git,
   zstd,
+  yq,
   sourceInfo,
   pnpmDepsHash ? (sourceInfo.pnpmDepsHash or null),
 }:
@@ -119,6 +120,7 @@ let
           node-gyp
           git
           zstd
+          yq
           ;
       }
       {

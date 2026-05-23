@@ -37,6 +37,34 @@ log_step "chmod pnpm store writable" chmod -R +w "$store_path"
 
 # pnpm --ignore-scripts marks tarball deps as "not built" and offline install
 # later refuses to use them; if a dep doesn't require build, promote it.
+if [ -f pnpm-workspace.yaml ]; then
+  python3 - <<'PY'
+import json
+import subprocess
+from pathlib import Path
+
+workspace = Path("pnpm-workspace.yaml")
+lockfile = Path("pnpm-lock.yaml")
+workspace_json = json.loads(subprocess.check_output(["yq", ".", str(workspace)]))
+lockfile_json = json.loads(subprocess.check_output(["yq", ".", str(lockfile)]))
+workspace_patches = workspace_json.get("patchedDependencies", {})
+lockfile_patches = lockfile_json.get("patchedDependencies", {})
+
+merged_patches = {}
+for name, patch_path in workspace_patches.items():
+    lockfile_patch = lockfile_patches.get(name)
+    if isinstance(lockfile_patch, dict):
+        patch_hash = lockfile_patch.get("hash")
+    else:
+        patch_hash = lockfile_patch
+    merged_patches[name] = {"hash": patch_hash, "path": patch_path}
+
+if merged_patches:
+    lockfile_json["patchedDependencies"] = merged_patches
+    lockfile.write_text(subprocess.check_output(["yq", "-y", "."], input=json.dumps(lockfile_json).encode()).decode())
+PY
+fi
+
 log_step "promote pnpm integrity" "$PROMOTE_PNPM_INTEGRITY_SH" "$store_path"
 
 export REAL_NODE_GYP="$(command -v node-gyp)"
